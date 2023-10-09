@@ -57,11 +57,11 @@ func (s *Sender) SendMessage(ctx context.Context, msg Message) error {
 			notifier := notifier.(*SmtpNotifier)
 			smtpMsg := NewSmtpMessage(notifier.From(), notifier.To(), msg.Subject, msg.Text)
 			if err := notifier.Send(ctx, smtpMsg); err != nil {
-				return fmt.Errorf("SMTP message send error: %v", err)
+				return fmt.Errorf("SMTP message send error: %v msg: %s", err, msg.Text)
 			}
 		case NotifierTypeTelegram:
 			if err := notifier.Send(ctx, msg.Text); err != nil {
-				return fmt.Errorf("Telegram message send error: %v", err)
+				return fmt.Errorf("Telegram message send error: %v msg: %s", err, msg.Text)
 			}
 		default:
 			return fmt.Errorf("Unknown notifier %s", notifier.Type())
