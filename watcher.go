@@ -293,12 +293,12 @@ func processLines(lines []string, matches []*LogMatch, dateReg *regexp.Regexp) [
 
 	var messages []Message
 
-	for mIndex, m := range matches {
+	for mIndex, match := range matches {
 		for line, count := range matchMaps[mIndex] {
+			match.Text = line
 			messages = append(messages, Message{
-				Text:  line,
 				Count: count,
-				Match: m,
+				Match: match,
 			})
 		}
 	}
