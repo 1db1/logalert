@@ -352,8 +352,8 @@ func lineRemoveDate(str string, reDate *regexp.Regexp) (string, bool) {
 	}
 
 	matches := reDate.FindStringSubmatch(str)
-	if len(matches) == 4 {
-		return matches[1] + matches[3], true
+	if len(matches) == 1 {
+		return strings.Replace(str, matches[0], "", 1), true
 	}
 
 	return str, false
