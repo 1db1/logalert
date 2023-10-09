@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -19,7 +20,9 @@ type TelegramNotifier struct {
 }
 
 func NewTelegramNotifier(cfg TelegramConfig) (*TelegramNotifier, error) {
-	opts := []bot.Option{}
+	opts := []bot.Option{
+		bot.WithCheckInitTimeout(time.Second * 5),
+	}
 
 	b, err := bot.New(cfg.Token, opts...)
 	if err != nil {
