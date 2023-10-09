@@ -1,0 +1,53 @@
+hostname: MyHost
+
+notifications:
+  -
+    name: mail1
+    type: mail
+    host:
+    port: 
+    username:
+    password:
+    from:
+    to:
+  -
+    name: tg
+    type: telegram
+    token:
+    chatID:
+
+logFiles:
+  - 
+    path: /tmp/test
+    dateFormat:
+    readBufferSize: 1Kb
+    interval: 60
+    matches:
+      - 
+        name: App error
+        pattern: ERROR
+        message: "🔴 *Host:* %hostname\n*Count:* %count\n%name\n%text"
+        subject: "🔴 %hostname: %name"
+        notifications: [mail1, tg]
+      - 
+        name: App warning
+        pattern: WARN
+        message: "🟡 *Host:* %hostname\n*Count:* %count\n%name\n%text"
+        notifications: [tg]
+      - 
+        name: App info
+        pattern: INFO
+        message: "🔵 *Host:* %hostname\n*Count:* %count\n%name\n%text"
+        notifications: [tg]
+  - 
+    path: /tmp/test2
+    dateFormat:
+    readBufferSize: 1Kb
+    interval: 60
+    matches:
+      - 
+        name: App error2
+        pattern: ERROR
+        message: "🔴 *Host:* %hostname\n*Count:* %count\n%name\n%text"
+        subject: "🔴 %hostname: %name"
+        notifications: [mail1, tg]
