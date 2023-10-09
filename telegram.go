@@ -32,7 +32,7 @@ func NewTelegramNotifier(cfg TelegramConfig) (*TelegramNotifier, error) {
 func (tn *TelegramNotifier) Send(ctx context.Context, msg string) error {
 	_, err := tn.bot.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    tn.chatID,
-		Text:      msg,
+		Text:      bot.EscapeMarkdown(msg),
 		ParseMode: models.ParseModeMarkdown,
 	})
 
