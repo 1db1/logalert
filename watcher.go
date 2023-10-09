@@ -23,7 +23,6 @@ type LogMatch struct {
 	LineReg       *regexp.Regexp
 	TextFormat    string
 	SubjectFormat string
-	Text          string
 	Notifications []string
 }
 
@@ -295,8 +294,8 @@ func processLines(lines []string, matches []*LogMatch, dateReg *regexp.Regexp) [
 
 	for mIndex, match := range matches {
 		for line, count := range matchMaps[mIndex] {
-			match.Text = line
 			messages = append(messages, Message{
+				Text:  line,
 				Count: count,
 				Match: match,
 			})

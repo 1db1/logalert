@@ -6,8 +6,8 @@ import (
 )
 
 type Message struct {
-	Text    string
 	Subject string
+	Text    string
 	Count   int
 	Match   *LogMatch
 }
@@ -17,7 +17,7 @@ func (msg *Message) BuildSubject() {
 }
 
 func (msg *Message) BuildText() {
-	msg.Text = strings.Replace(msg.Match.TextFormat, "%name", msg.Match.Name, -1)
-	msg.Text = strings.Replace(msg.Text, "%count", strconv.Itoa(msg.Count), -1)
-	msg.Text = strings.Replace(msg.Text, "%text", msg.Match.Text, -1)
+	text := strings.Replace(msg.Match.TextFormat, "%name", msg.Match.Name, -1)
+	text = strings.Replace(text, "%count", strconv.Itoa(msg.Count), -1)
+	msg.Text = strings.Replace(text, "%text", msg.Text, -1)
 }
