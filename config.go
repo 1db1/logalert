@@ -48,7 +48,7 @@ func NewConfig(configPath string) (Config, error) {
 	d := yaml.NewDecoder(file)
 
 	if err := d.Decode(&config); err != nil {
-		return config, err
+		return config, fmt.Errorf("YAML config decode error: %v", err)
 	}
 
 	if config.Hostname == "" {
