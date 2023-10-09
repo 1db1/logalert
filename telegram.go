@@ -21,7 +21,7 @@ type TelegramNotifier struct {
 
 func NewTelegramNotifier(cfg TelegramConfig) (*TelegramNotifier, error) {
 	opts := []bot.Option{
-		bot.WithCheckInitTimeout(time.Second * 5),
+		bot.WithCheckInitTimeout(time.Second * 10),
 	}
 
 	b, err := bot.New(cfg.Token, opts...)

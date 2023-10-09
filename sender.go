@@ -52,9 +52,9 @@ func (s *Sender) SendMessage(ctx context.Context, msg Message) error {
 			return fmt.Errorf("Unknown notifier %s", notif)
 		}
 
-		msg.Text = notifier.FormatText(msg.Match.Text)
-		msg.FormatSubject()
-		msg.FormatText()
+		msg.Match.Text = notifier.FormatText(msg.Match.Text)
+		msg.BuildSubject()
+		msg.BuildText()
 
 		if err := notifier.Send(ctx, msg); err != nil {
 			return fmt.Errorf("%s message send error: %v msg: %s", notifier.Type(), err, msg.Text)
