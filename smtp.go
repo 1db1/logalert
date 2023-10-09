@@ -57,7 +57,7 @@ func NewSmtpNotifier(cfg EmailConfig) (*SmtpNotifier, error) {
 	return &SmtpNotifier{sync.Mutex{}, hostname, auth, cfg.From, cfg.To, client}, nil
 }
 
-func (sn *SmtpNotifier) Send(ctx context.Context, msg string) error {
+func (sn *SmtpNotifier) Send(ctx context.Context, msg Message) error {
 	sn.Lock()
 	defer sn.Unlock()
 
@@ -76,7 +76,7 @@ func (sn *SmtpNotifier) Send(ctx context.Context, msg string) error {
 		return fmt.Errorf("SMTP client data error: %v", err)
 	}
 
-	_, err = w.Write([]byte(msg))
+	_, err = w.Write(newSmtpMessage(sn.From(), sn.To(), msg.Subject, msg.Text))
 	if err != nil {
 		return fmt.Errorf("SMTP client write error: %v", err)
 	}
@@ -101,10 +101,15 @@ func (sn *SmtpNotifier) Type() string {
 	return "email"
 }
 
+func (sn *SmtpNotifier) FormatText(text string) string {
+	return text
+}
+
 func (sn *SmtpNotifier) Close() error {
 	return sn.client.Close()
 }
 
-func NewSmtpMessage(from, to, subject, body string) string {
-	return fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s\r\n", from, to, subject, body)
+func newSmtpMessage(from, to, subject, body string) []byte {
+	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s\r\n", from, to, subject, body)
+	return []byte(msg)
 }

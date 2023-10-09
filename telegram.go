@@ -29,10 +29,10 @@ func NewTelegramNotifier(cfg TelegramConfig) (*TelegramNotifier, error) {
 	return &TelegramNotifier{b, cfg.ChatID}, nil
 }
 
-func (tn *TelegramNotifier) Send(ctx context.Context, msg string) error {
+func (tn *TelegramNotifier) Send(ctx context.Context, msg Message) error {
 	_, err := tn.bot.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    tn.chatID,
-		Text:      bot.EscapeMarkdown(msg),
+		Text:      msg.Text,
 		ParseMode: models.ParseModeMarkdown,
 	})
 
@@ -45,6 +45,10 @@ func (tn *TelegramNotifier) Send(ctx context.Context, msg string) error {
 
 func (tn TelegramNotifier) Type() string {
 	return "telegram"
+}
+
+func (tn TelegramNotifier) FormatText(text string) string {
+	return bot.EscapeMarkdown(text)
 }
 
 func (tn *TelegramNotifier) Close() error {

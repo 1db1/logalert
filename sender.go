@@ -46,25 +46,18 @@ func (s *Sender) RegisterNotifier(notifCfg NotificationConfig) {
 }
 
 func (s *Sender) SendMessage(ctx context.Context, msg Message) error {
-	for _, notif := range msg.Notifications {
+	for _, notif := range msg.Match.Notifications {
 		notifier, ok := s.notifiers[notif]
 		if !ok {
 			return fmt.Errorf("Unknown notifier %s", notif)
 		}
 
-		switch notifier.Type() {
-		case NotifierTypeEmail:
-			notifier := notifier.(*SmtpNotifier)
-			smtpMsg := NewSmtpMessage(notifier.From(), notifier.To(), msg.Subject, msg.Text)
-			if err := notifier.Send(ctx, smtpMsg); err != nil {
-				return fmt.Errorf("SMTP message send error: %v msg: %s", err, msg.Text)
-			}
-		case NotifierTypeTelegram:
-			if err := notifier.Send(ctx, msg.Text); err != nil {
-				return fmt.Errorf("Telegram message send error: %v msg: %s", err, msg.Text)
-			}
-		default:
-			return fmt.Errorf("Unknown notifier %s", notifier.Type())
+		msg.Text = notifier.FormatText(msg.Text)
+		msg.FormatSubject()
+		msg.FormatText()
+
+		if err := notifier.Send(ctx, msg); err != nil {
+			return fmt.Errorf("%s message send error: %v msg: %s", notifier.Type(), err, msg.Text)
 		}
 	}
 

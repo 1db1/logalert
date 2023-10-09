@@ -22,7 +22,9 @@ func TestSmtp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	msg := "Logalert SMTP notifier test message"
+	msg := Message{
+		Text: "Logalert SMTP notifier test message",
+	}
 
 	err = smtpNotifier.Send(context.Background(), msg)
 	if err != nil {

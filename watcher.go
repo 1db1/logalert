@@ -10,7 +10,6 @@ import (
 	"os"
 	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -19,18 +18,13 @@ import (
 
 const rotationDepth = 3
 
-type Message struct {
-	Subject       string
+type LogMatch struct {
+	Name          string
+	LineReg       *regexp.Regexp
+	TextFormat    string
+	SubjectFormat string
 	Text          string
 	Notifications []string
-}
-
-type LogMatch struct {
-	name          string
-	lineReg       *regexp.Regexp
-	textFormat    string
-	subjectFormat string
-	notifications []string
 }
 
 type LogWatcher struct {
@@ -44,7 +38,7 @@ type LogWatcher struct {
 	logFileInfoCurr os.FileInfo
 	posCurr         int64
 	checkInterval   time.Duration
-	matches         []LogMatch
+	matches         []*LogMatch
 	sender          *Sender
 }
 
@@ -112,12 +106,12 @@ func NewLogWatcher(hostname string, cfg LogFileConfig, sender *Sender) *LogWatch
 			log.Fatalf("LogFile %s pattern compile error: %v", cfg.Path, err)
 		}
 
-		w.matches = append(w.matches, LogMatch{
-			name:          m.Name,
-			lineReg:       lineReg,
-			textFormat:    strings.Replace(m.Message, "%hostname", w.hostname, -1),
-			subjectFormat: strings.Replace(m.Subject, "%hostname", w.hostname, -1),
-			notifications: removeDuplicates(m.Notifications),
+		w.matches = append(w.matches, &LogMatch{
+			Name:          m.Name,
+			LineReg:       lineReg,
+			TextFormat:    strings.Replace(m.Message, "%hostname", w.hostname, -1),
+			SubjectFormat: strings.Replace(m.Subject, "%hostname", w.hostname, -1),
+			Notifications: removeDuplicates(m.Notifications),
 		})
 	}
 
@@ -276,7 +270,7 @@ func (w *LogWatcher) getNewLines() ([]string, error) {
 	return linesResult, nil
 }
 
-func processLines(lines []string, matches []LogMatch, dateReg *regexp.Regexp) []Message {
+func processLines(lines []string, matches []*LogMatch, dateReg *regexp.Regexp) []Message {
 	matchMaps := make([]map[string]int, len(matches))
 
 	for pIndex, _ := range matches {
@@ -284,8 +278,8 @@ func processLines(lines []string, matches []LogMatch, dateReg *regexp.Regexp) []
 	}
 
 	for _, line := range lines {
-		for mIndex, p := range matches {
-			if p.lineReg.MatchString(line) {
+		for mIndex, m := range matches {
+			if m.LineReg.MatchString(line) {
 				line, _ = lineRemoveDate(line, dateReg)
 
 				if _, ok := matchMaps[mIndex][line]; !ok {
@@ -301,12 +295,11 @@ func processLines(lines []string, matches []LogMatch, dateReg *regexp.Regexp) []
 
 	for mIndex, m := range matches {
 		for line, count := range matchMaps[mIndex] {
-			text := m.textFormat
-			text = strings.Replace(text, "%name", m.name, -1)
-			text = strings.Replace(text, "%text", line, -1)
-			text = strings.Replace(text, "%count", strconv.Itoa(count), -1)
-			subject := strings.Replace(m.subjectFormat, "%name", m.name, -1)
-			messages = append(messages, Message{subject, text, m.notifications})
+			messages = append(messages, Message{
+				Text:  line,
+				Count: count,
+				Match: m,
+			})
 		}
 	}
 
