@@ -46,7 +46,7 @@ func (s *Sender) RegisterNotifier(notifCfg NotificationConfig) {
 }
 
 func (s *Sender) SendMessage(ctx context.Context, msg Message) error {
-	for _, notif := range msg.Match.Notifications {
+	for _, notif := range msg.Filter.Notifications {
 		notifier, ok := s.notifiers[notif]
 		if !ok {
 			return fmt.Errorf("Unknown notifier %s", notif)

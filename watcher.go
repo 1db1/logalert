@@ -18,14 +18,6 @@ import (
 
 const rotationDepth = 3
 
-type LogMatch struct {
-	Name          string
-	LineReg       *regexp.Regexp
-	TextFormat    string
-	SubjectFormat string
-	Notifications []string
-}
-
 type LogWatcher struct {
 	hostname        string
 	buf             []byte
@@ -37,8 +29,9 @@ type LogWatcher struct {
 	logFileInfoCurr os.FileInfo
 	posCurr         int64
 	checkInterval   time.Duration
-	matches         []*LogMatch
+	filters         []*Filter
 	sender          *Sender
+	needToSave      bool
 }
 
 func NewLogWatcher(hostname string, cfg LogFileConfig, sender *Sender) *LogWatcher {
@@ -99,25 +92,23 @@ func NewLogWatcher(hostname string, cfg LogFileConfig, sender *Sender) *LogWatch
 		log.Fatalf("LogFile %s date pattern compile error: %v", cfg.Path, err)
 	}
 
-	for _, m := range cfg.Matches {
-		lineReg, err := regexp.Compile(m.Pattern)
+	for _, filterCfg := range cfg.Filters {
+		filter, err := NewFilter(filterCfg, w.hostname)
 		if err != nil {
-			log.Fatalf("LogFile %s pattern compile error: %v", cfg.Path, err)
+			log.Fatalf("NewFilter error: %v", err)
 		}
 
-		w.matches = append(w.matches, &LogMatch{
-			Name:          m.Name,
-			LineReg:       lineReg,
-			TextFormat:    strings.Replace(m.Message, "%hostname", w.hostname, -1),
-			SubjectFormat: strings.Replace(m.Subject, "%hostname", w.hostname, -1),
-			Notifications: removeDuplicates(m.Notifications),
-		})
+		w.filters = append(w.filters, filter)
 	}
 
 	return &w
 }
 
 func (w *LogWatcher) saveState(fileInfo os.FileInfo, pos int64) error {
+	if !w.needToSave {
+		return nil
+	}
+
 	file, err := os.Create(w.stateFilePath)
 	if err != nil {
 		return err
@@ -143,6 +134,7 @@ func (w *LogWatcher) saveState(fileInfo os.FileInfo, pos int64) error {
 	}
 
 	w.state = state
+	w.needToSave = false
 	w.logFileInfoPrev = fileInfo
 
 	return nil
@@ -188,12 +180,16 @@ func (w *LogWatcher) logParsingAndSendMessages(ctx context.Context) error {
 		return fmt.Errorf("getNewLines error: %v logFile: %s", err, w.logFilePath)
 	}
 
-	messages := processLines(lines, w.matches, w.dateReg)
+	messages := processLines(lines, w.filters, w.dateReg)
 
 	for _, msg := range messages {
 		if err = w.sender.SendMessage(ctx, msg); err != nil {
 			return fmt.Errorf("SendMessage error: %v", err)
 		}
+	}
+
+	if len(messages) > 0 {
+		w.needToSave = true
 	}
 
 	return nil
@@ -269,35 +265,35 @@ func (w *LogWatcher) getNewLines() ([]string, error) {
 	return linesResult, nil
 }
 
-func processLines(lines []string, matches []*LogMatch, dateReg *regexp.Regexp) []Message {
-	matchMaps := make([]map[string]int, len(matches))
+func processLines(lines []string, filters []*Filter, dateReg *regexp.Regexp) []Message {
+	matchMaps := make([]map[string]int, len(filters))
 
-	for pIndex, _ := range matches {
-		matchMaps[pIndex] = make(map[string]int)
+	for fIndex, _ := range filters {
+		matchMaps[fIndex] = make(map[string]int)
 	}
 
 	for _, line := range lines {
-		for mIndex, m := range matches {
-			if m.LineReg.MatchString(line) {
+		for fIndex, filter := range filters {
+			if filter.Match(line) {
 				line, _ = lineRemoveDate(line, dateReg)
 
-				if _, ok := matchMaps[mIndex][line]; !ok {
-					matchMaps[mIndex][line] = 0
+				if _, ok := matchMaps[fIndex][line]; !ok {
+					matchMaps[fIndex][line] = 0
 				}
 
-				matchMaps[mIndex][line]++
+				matchMaps[fIndex][line]++
 			}
 		}
 	}
 
 	var messages []Message
 
-	for mIndex, match := range matches {
-		for line, count := range matchMaps[mIndex] {
+	for fIndex, filter := range filters {
+		for line, count := range matchMaps[fIndex] {
 			messages = append(messages, Message{
-				Text:  line,
-				Count: count,
-				Match: match,
+				Text:   line,
+				Count:  count,
+				Filter: filter,
 			})
 		}
 	}

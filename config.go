@@ -7,20 +7,21 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type Match struct {
+type FilterConfig struct {
 	Name          string   `yaml:"name"`
 	Pattern       string   `yaml:"pattern"`
+	Exceptions    []string `yaml:"exceptions"`
 	Message       string   `yaml:"message"`
 	Subject       string   `yaml:"subject"`
 	Notifications []string `yaml:"notifications"`
 }
 
 type LogFileConfig struct {
-	Path           string  `yaml:"path"`
-	DateFormat     string  `yaml:"dateFormat"`
-	ReadBufferSize string  `yaml:"readBufferSize"`
-	IntervalSec    uint    `yaml:"interval"`
-	Matches        []Match `yaml:"matches"`
+	Path           string         `yaml:"path"`
+	DateFormat     string         `yaml:"dateFormat"`
+	ReadBufferSize string         `yaml:"readBufferSize"`
+	IntervalSec    uint           `yaml:"interval"`
+	Filters        []FilterConfig `yaml:"filters"`
 }
 
 type NotificationConfig struct {
