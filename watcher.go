@@ -201,7 +201,7 @@ func (w *LogWatcher) logParsingAndSendMessages(ctx context.Context) error {
 		return fmt.Errorf("getNewLines error: %v logFile: %s", err, w.logFilePath)
 	}
 
-	messages := processLines(lines, w.filters, w.dateReg)
+	messages := w.processLines(lines)
 
 	for _, msg := range messages {
 		if err = w.sender.SendMessage(ctx, msg); err != nil {
@@ -286,17 +286,14 @@ func (w *LogWatcher) getNewLines() ([]string, error) {
 	return linesResult, nil
 }
 
-func processLines(lines []string, filters []*Filter, dateReg *regexp.Regexp) []Message {
-	matchMaps := make([]map[string]int, len(filters))
+func (w *LogWatcher) processLines(lines []string) []Message {
+	matchMaps := make([]map[string]int, len(w.filters))
 
-	for fIndex, _ := range filters {
+	for fIndex, filter := range w.filters {
 		matchMaps[fIndex] = make(map[string]int)
-	}
-
-	for _, line := range lines {
-		for fIndex, filter := range filters {
+		for _, line := range lines {
 			if filter.Match(line) {
-				line, _ = lineRemoveDate(line, dateReg)
+				line, _ = lineRemoveDate(line, w.dateReg)
 
 				if _, ok := matchMaps[fIndex][line]; !ok {
 					matchMaps[fIndex][line] = 0
@@ -309,7 +306,7 @@ func processLines(lines []string, filters []*Filter, dateReg *regexp.Regexp) []M
 
 	var messages []Message
 
-	for fIndex, filter := range filters {
+	for fIndex, filter := range w.filters {
 		for line, count := range matchMaps[fIndex] {
 			messages = append(messages, Message{
 				Text:   line,

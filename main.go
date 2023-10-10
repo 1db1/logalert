@@ -66,5 +66,5 @@ func run(cfg Config) {
 
 	sender.Close()
 
-	log.Printf("LogAlert is shutting down due to %+v", interrupt)
+	log.Printf("[INFO] LogAlert is shutting down due to %+v", interrupt)
 }

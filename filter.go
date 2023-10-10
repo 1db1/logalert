@@ -21,14 +21,14 @@ func NewFilter(cfg FilterConfig, hostname string) (*Filter, error) {
 		return nil, fmt.Errorf("LogFile filter %s pattern compile error: %v", cfg.Name, err)
 	}
 
-	exceptRegs := make([]*regexp.Regexp, len(cfg.Exceptions))
+	exceptRegs := make([]*regexp.Regexp, 0, len(cfg.Exceptions))
 
 	for _, exStr := range cfg.Exceptions {
-		exRe, err := regexp.Compile(exStr)
+		exReg, err := regexp.Compile(exStr)
 		if err != nil {
 			return nil, fmt.Errorf("LogFile filter %s exception pattern %s compile error: %v", cfg.Name, exStr, err)
 		}
-		exceptRegs = append(exceptRegs, exRe)
+		exceptRegs = append(exceptRegs, exReg)
 	}
 
 	return &Filter{
