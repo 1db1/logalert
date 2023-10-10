@@ -52,12 +52,13 @@ func (s *Sender) SendMessage(ctx context.Context, msg Message) error {
 			return fmt.Errorf("Unknown notifier %s", notif)
 		}
 
-		msg.Text = notifier.FormatText(msg.Text)
-		msg.BuildSubject()
-		msg.BuildText()
+		msgCopy := msg
+		msgCopy.BuildSubject()
+		msgCopy.BuildText()
+		msgCopy.Text = notifier.FormatText(msgCopy.Text)
 
-		if err := notifier.Send(ctx, msg); err != nil {
-			return fmt.Errorf("%s message send error: %v msg: %s", notifier.Type(), err, msg.Text)
+		if err := notifier.Send(ctx, msgCopy); err != nil {
+			return fmt.Errorf("%s message send error: %v msg: %s", notifier.Type(), err, msgCopy.Text)
 		}
 	}
 

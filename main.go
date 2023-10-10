@@ -38,6 +38,8 @@ func main() {
 }
 
 func run(cfg Config) {
+	log.Printf("[INFO] LogAlert is running")
+
 	sender := NewSender()
 
 	for _, notifCfg := range cfg.Notifications {
@@ -57,8 +59,6 @@ func run(cfg Config) {
 		watcher := NewLogWatcher(cfg.Hostname, logFileCfg, sender)
 		go watcher.watch(ctx, &wg)
 	}
-
-	log.Printf("LogAlert is running")
 
 	interrupt := <-stopChan
 	cancel()

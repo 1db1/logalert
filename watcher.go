@@ -82,7 +82,9 @@ func NewLogWatcher(hostname string, cfg LogFileConfig, sender *Sender) *LogWatch
 
 	file.Close()
 
-	err = w.saveState(w.logFileInfoCurr, 0)
+	w.logFileInfoPrev = w.logFileInfoCurr
+
+	err = w.loadState()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -128,7 +130,7 @@ func (w *LogWatcher) saveState(fileInfo os.FileInfo, pos int64) error {
 		return err
 	}
 
-	_, err = fmt.Fprint(file, b)
+	_, err = fmt.Fprint(file, string(b))
 	if err != nil {
 		return err
 	}
@@ -140,8 +142,27 @@ func (w *LogWatcher) saveState(fileInfo os.FileInfo, pos int64) error {
 	return nil
 }
 
+func (w *LogWatcher) loadState() error {
+	b, err := os.ReadFile(w.stateFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("ReadFile error: %v", err)
+	}
+
+	err = json.Unmarshal(b, &w.state)
+	if err != nil {
+		return fmt.Errorf("state unmarshal error: %v", err)
+	}
+
+	return nil
+}
+
 func (w *LogWatcher) watch(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
+
+	log.Printf("[INFO] starting monitoring log file: %s", w.logFilePath)
 
 	err := w.logParsingAndSendMessages(ctx)
 	if err != nil {
@@ -306,7 +327,7 @@ func processLines(lines []string, filters []*Filter, dateReg *regexp.Regexp) []M
 // index = 0 on path /foo/bar/file founded
 // index = 1 on path /foo/bar/file.1 founded
 // index = -1 if not founded
-func searchFile(filePath string, fileInfo os.FileInfo) (int, os.FileInfo) {
+func searchFile(filePath string, fileInfoPrev os.FileInfo) (int, os.FileInfo) {
 	for i := 0; i <= rotationDepth; i++ {
 		path := filePath
 		if i > 0 {
@@ -326,12 +347,12 @@ func searchFile(filePath string, fileInfo os.FileInfo) (int, os.FileInfo) {
 
 		f.Close()
 
-		if os.SameFile(fileInfo, fInfo) {
+		if os.SameFile(fileInfoPrev, fInfo) {
 			return i, fInfo
 		}
 	}
 
-	return -1, fileInfo
+	return -1, fileInfoPrev
 }
 
 func lineRemoveDate(str string, reDate *regexp.Regexp) (string, bool) {
