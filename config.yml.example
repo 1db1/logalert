@@ -29,18 +29,18 @@ logFiles:
         exceptions:
           -
             ExceptMe
-        message: "🔴 %hostname - %name (%count)\n%text"
+        message: "🔴 %hostname: %name (%count)\n\n%text"
         subject: "🔴 %hostname: %name"
         notifications: [mail1, tg]
       - 
         name: App warning
         pattern: WARN
-        message: "🟡 %hostname - %name (%count)\n%text"
+        message: "🟡 %hostname: %name (%count)\n\n%text"
         notifications: [tg]
       - 
         name: App info
         pattern: INFO
-        message: "🔵 %hostname - %name (%count)\n%text"
+        message: "🔵 %hostname: %name (%count)\n\n%text"
         notifications: [tg]
   - 
     path: /tmp/test2
@@ -51,6 +51,6 @@ logFiles:
       - 
         name: App error2
         pattern: ERROR
-        message: "🔴 *Host:* %hostname\n*Count:* %count\n%name\n%text"
+        message: "🔴 %hostname: %name (%count)\n\n%text"
         subject: "🔴 %hostname: %name"
         notifications: [mail1, tg]
