@@ -8,7 +8,9 @@ import (
 	"sync"
 )
 
-type EmailConfig struct {
+const NotifierTypeMail = "mail"
+
+type MailConfig struct {
 	Host     string `yaml:"host"`
 	Port     string `yaml:"port"`
 	Username string `yaml:"username"`
@@ -19,6 +21,7 @@ type EmailConfig struct {
 
 type SmtpNotifier struct {
 	sync.Mutex
+	name     string
 	hostname string
 	auth     smtp.Auth
 	from     string
@@ -26,8 +29,8 @@ type SmtpNotifier struct {
 	client   *smtp.Client
 }
 
-func NewSmtpNotifier(cfg EmailConfig) (*SmtpNotifier, error) {
-	hostname := cfg.Host + ":" + cfg.Port
+func NewSmtpNotifier(cfg NotificationConfig) (*SmtpNotifier, error) {
+	hostname := cfg.MailConfig.Host + ":" + cfg.MailConfig.Port
 
 	client, err := smtp.Dial(hostname)
 	if err != nil {
@@ -46,7 +49,7 @@ func NewSmtpNotifier(cfg EmailConfig) (*SmtpNotifier, error) {
 		}
 	}
 
-	auth := smtp.PlainAuth("", cfg.Username, cfg.Password, cfg.Host)
+	auth := smtp.PlainAuth("", cfg.MailConfig.Username, cfg.MailConfig.Password, cfg.MailConfig.Host)
 
 	if ok, _ := client.Extension("AUTH"); ok {
 		if err = client.Auth(auth); err != nil {
@@ -54,12 +57,23 @@ func NewSmtpNotifier(cfg EmailConfig) (*SmtpNotifier, error) {
 		}
 	}
 
-	return &SmtpNotifier{sync.Mutex{}, hostname, auth, cfg.From, cfg.To, client}, nil
+	return &SmtpNotifier{
+		sync.Mutex{},
+		cfg.Name,
+		hostname,
+		auth,
+		cfg.MailConfig.From,
+		cfg.MailConfig.To,
+		client,
+	}, nil
 }
 
 func (sn *SmtpNotifier) Send(ctx context.Context, msg Message) error {
 	sn.Lock()
 	defer sn.Unlock()
+
+	msg.BuildSubject()
+	msg.BuildText()
 
 	err := sn.client.Mail(sn.from)
 	if err != nil {
@@ -97,8 +111,12 @@ func (sn *SmtpNotifier) To() string {
 	return sn.to
 }
 
+func (sn *SmtpNotifier) Name() string {
+	return sn.name
+}
+
 func (sn *SmtpNotifier) Type() string {
-	return "email"
+	return NotifierTypeMail
 }
 
 func (sn *SmtpNotifier) FormatText(text string) string {

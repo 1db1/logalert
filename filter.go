@@ -12,10 +12,10 @@ type Filter struct {
 	ExceptRegs    []*regexp.Regexp
 	TextFormat    string
 	SubjectFormat string
-	Notifications []string
+	Notifiers     []Notifier
 }
 
-func NewFilter(cfg FilterConfig, hostname string) (*Filter, error) {
+func NewFilter(cfg FilterConfig, hostname string, notifiers []Notifier) (*Filter, error) {
 	lineReg, err := regexp.Compile(cfg.Pattern)
 	if err != nil {
 		return nil, fmt.Errorf("LogFile filter %s pattern compile error: %v", cfg.Name, err)
@@ -31,14 +31,26 @@ func NewFilter(cfg FilterConfig, hostname string) (*Filter, error) {
 		exceptRegs = append(exceptRegs, exReg)
 	}
 
-	return &Filter{
+	cfg.Notifications = removeDuplicates(cfg.Notifications)
+
+	f := &Filter{
 		Name:          cfg.Name,
 		LineReg:       lineReg,
 		ExceptRegs:    exceptRegs,
 		TextFormat:    strings.Replace(cfg.Message, "%hostname", hostname, -1),
 		SubjectFormat: strings.Replace(cfg.Subject, "%hostname", hostname, -1),
-		Notifications: removeDuplicates(cfg.Notifications),
-	}, nil
+		Notifiers:     make([]Notifier, 0, len(cfg.Notifications)),
+	}
+
+	for _, notifName := range cfg.Notifications {
+		for _, notif := range notifiers {
+			if notif.Name() == notifName {
+				f.Notifiers = append(f.Notifiers, notif)
+			}
+		}
+	}
+
+	return f, nil
 }
 
 func (f *Filter) Match(str string) bool {

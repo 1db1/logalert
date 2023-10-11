@@ -18,23 +18,22 @@ import (
 
 const rotationDepth = 3
 
-type LogWatcher struct {
-	hostname        string
-	buf             []byte
-	dateReg         *regexp.Regexp
-	state           State
-	stateFilePath   string
-	logFilePath     string
-	logFileInfoPrev os.FileInfo
-	logFileInfoCurr os.FileInfo
-	posCurr         int64
-	checkInterval   time.Duration
-	filters         []*Filter
-	sender          *Sender
-	needToSave      bool
+type Watcher struct {
+	buf           []byte
+	dateReg       *regexp.Regexp
+	state         State
+	stateFilePath string
+	fileName      string
+	filePath      string
+	fileInfoPrev  os.FileInfo
+	fileInfoCurr  os.FileInfo
+	posCurr       int64
+	checkInterval time.Duration
+	filters       []*Filter
+	needToSave    bool
 }
 
-func NewLogWatcher(hostname string, cfg LogFileConfig, sender *Sender) *LogWatcher {
+func NewWatcher(cfg FileConfig, filters []*Filter) (*Watcher, error) {
 	var statePath string
 
 	switch runtime.GOOS {
@@ -43,24 +42,32 @@ func NewLogWatcher(hostname string, cfg LogFileConfig, sender *Sender) *LogWatch
 	case "darwin":
 		statePath = "/usr/local/var/lib/logalert"
 	default:
-		log.Fatal(runtime.GOOS, " OS is not supported")
+		return nil, fmt.Errorf("%s OS is not supported", runtime.GOOS)
 	}
 
 	_, err := os.Stat(statePath)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	w := LogWatcher{
-		hostname:      hostname,
+	w := Watcher{
 		buf:           newBuffer(cfg.ReadBufferSize),
-		logFilePath:   cfg.Path,
+		fileName:      cfg.Name,
+		filePath:      cfg.Path,
 		checkInterval: time.Second * time.Duration(cfg.IntervalSec),
-		sender:        sender,
+		filters:       make([]*Filter, 0, len(cfg.Filters)),
 	}
 
-	logFilePathHash := md5.Sum([]byte(cfg.Path))
-	w.stateFilePath = fmt.Sprintf("%s/%x", statePath, logFilePathHash)
+	for _, filterName := range cfg.Filters {
+		for _, filter := range filters {
+			if filter.Name == filterName {
+				w.filters = append(w.filters, filter)
+			}
+		}
+	}
+
+	filePathHash := md5.Sum([]byte(cfg.Path))
+	w.stateFilePath = fmt.Sprintf("%s/%x", statePath, filePathHash)
 
 	if len(w.buf) == 0 {
 		log.Fatalf("Can't create read buffer with size %s for logfile %s",
@@ -71,10 +78,10 @@ func NewLogWatcher(hostname string, cfg LogFileConfig, sender *Sender) *LogWatch
 
 	file, err := os.Open(cfg.Path)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	w.logFileInfoCurr, err = file.Stat()
+	w.fileInfoCurr, err = file.Stat()
 	if err != nil {
 		file.Close()
 		log.Fatal(err)
@@ -82,31 +89,22 @@ func NewLogWatcher(hostname string, cfg LogFileConfig, sender *Sender) *LogWatch
 
 	file.Close()
 
-	w.logFileInfoPrev = w.logFileInfoCurr
+	w.fileInfoPrev = w.fileInfoCurr
 
 	err = w.loadState()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	w.dateReg, err = regexp.Compile(cfg.DateFormat)
 	if err != nil {
-		log.Fatalf("LogFile %s date pattern compile error: %v", cfg.Path, err)
+		return nil, fmt.Errorf("LogFile %s date pattern compile error: %v", cfg.Path, err)
 	}
 
-	for _, filterCfg := range cfg.Filters {
-		filter, err := NewFilter(filterCfg, w.hostname)
-		if err != nil {
-			log.Fatalf("NewFilter error: %v", err)
-		}
-
-		w.filters = append(w.filters, filter)
-	}
-
-	return &w
+	return &w, nil
 }
 
-func (w *LogWatcher) saveState(fileInfo os.FileInfo, pos int64) error {
+func (w *Watcher) saveState(fileInfo os.FileInfo, pos int64) error {
 	if !w.needToSave {
 		return nil
 	}
@@ -137,12 +135,12 @@ func (w *LogWatcher) saveState(fileInfo os.FileInfo, pos int64) error {
 
 	w.state = state
 	w.needToSave = false
-	w.logFileInfoPrev = fileInfo
+	w.fileInfoPrev = fileInfo
 
 	return nil
 }
 
-func (w *LogWatcher) loadState() error {
+func (w *Watcher) loadState() error {
 	b, err := os.ReadFile(w.stateFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -159,19 +157,19 @@ func (w *LogWatcher) loadState() error {
 	return nil
 }
 
-func (w *LogWatcher) watch(ctx context.Context, wg *sync.WaitGroup) {
+func (w *Watcher) watch(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	log.Printf("[INFO] starting monitoring log file: %s", w.logFilePath)
+	log.Printf("[INFO] starting monitoring log file: %s", w.filePath)
 
 	err := w.logParsingAndSendMessages(ctx)
 	if err != nil {
 		log.Fatal("[ERROR] logParsingAndSendNotifications: ", err)
 	}
 
-	err = w.saveState(w.logFileInfoCurr, w.posCurr)
+	err = w.saveState(w.fileInfoCurr, w.posCurr)
 	if err != nil {
-		log.Fatalf("[ERROR] state update error: %v log file: %s", err, w.logFilePath)
+		log.Fatalf("[ERROR] state update error: %v log file: %s", err, w.filePath)
 	}
 
 	ticker := time.NewTicker(w.checkInterval)
@@ -187,25 +185,27 @@ func (w *LogWatcher) watch(ctx context.Context, wg *sync.WaitGroup) {
 				continue
 			}
 
-			err = w.saveState(w.logFileInfoCurr, w.posCurr)
+			err = w.saveState(w.fileInfoCurr, w.posCurr)
 			if err != nil {
-				log.Fatalf("[ERROR] state update error: %v log file: %s", err, w.logFilePath)
+				log.Fatalf("[ERROR] state update error: %v log file: %s", err, w.filePath)
 			}
 		}
 	}
 }
 
-func (w *LogWatcher) logParsingAndSendMessages(ctx context.Context) error {
+func (w *Watcher) logParsingAndSendMessages(ctx context.Context) error {
 	lines, err := w.getNewLines()
 	if err != nil {
-		return fmt.Errorf("getNewLines error: %v logFile: %s", err, w.logFilePath)
+		return fmt.Errorf("getNewLines error: %v logFile: %s", err, w.filePath)
 	}
 
 	messages := w.processLines(lines)
 
 	for _, msg := range messages {
-		if err = w.sender.SendMessage(ctx, msg); err != nil {
-			return fmt.Errorf("SendMessage error: %v", err)
+		for _, notifier := range msg.Filter.Notifiers {
+			if err := notifier.Send(ctx, msg); err != nil {
+				return fmt.Errorf("%s message send error: %v msg: %s", notifier.Type(), err, msg.Text)
+			}
 		}
 	}
 
@@ -216,10 +216,10 @@ func (w *LogWatcher) logParsingAndSendMessages(ctx context.Context) error {
 	return nil
 }
 
-func (w *LogWatcher) getNewLines() ([]string, error) {
-	fileIndex, fileInfo := searchFile(w.logFilePath, w.logFileInfoPrev)
+func (w *Watcher) getNewLines() ([]string, error) {
+	fileIndex, fileInfo := searchFile(w.filePath, w.fileInfoPrev)
 	if fileIndex == -1 {
-		return nil, fmt.Errorf("Can't find log file '%s' state. The file was unexpectedly changed.", w.logFilePath)
+		return nil, fmt.Errorf("Can't find log file '%s' state. The file was unexpectedly changed.", w.filePath)
 	}
 
 	var (
@@ -228,9 +228,9 @@ func (w *LogWatcher) getNewLines() ([]string, error) {
 	)
 
 	for i := fileIndex; i >= 0; i-- {
-		filePath := w.logFilePath
+		filePath := w.filePath
 		if i > 0 {
-			filePath = fmt.Sprintf("%s.%d", w.logFilePath, i)
+			filePath = fmt.Sprintf("%s.%d", w.filePath, i)
 		}
 
 		file, err := os.Open(filePath)
@@ -280,13 +280,13 @@ func (w *LogWatcher) getNewLines() ([]string, error) {
 		}
 	}
 
-	w.logFileInfoCurr = fileInfo
+	w.fileInfoCurr = fileInfo
 	w.posCurr = pos
 
 	return linesResult, nil
 }
 
-func (w *LogWatcher) processLines(lines []string) []Message {
+func (w *Watcher) processLines(lines []string) []Message {
 	matchMaps := make([]map[string]int, len(w.filters))
 
 	for fIndex, filter := range w.filters {
@@ -309,9 +309,10 @@ func (w *LogWatcher) processLines(lines []string) []Message {
 	for fIndex, filter := range w.filters {
 		for line, count := range matchMaps[fIndex] {
 			messages = append(messages, Message{
-				Text:   line,
-				Count:  count,
-				Filter: filter,
+				FileName: w.fileName,
+				Text:     line,
+				Count:    count,
+				Filter:   filter,
 			})
 		}
 	}

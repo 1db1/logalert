@@ -19,12 +19,15 @@ func TestBufferOverflow(t *testing.T) {
 		}
 	}()
 
-	logCfgTest := LogFileConfig{
+	logCfgTest := FileConfig{
 		Path:           logFilePath,
 		ReadBufferSize: "1kb",
 	}
 
-	logWatcher := NewLogWatcher("TestHost", logCfgTest, nil)
+	logWatcher, err := NewWatcher(logCfgTest, nil)
+	if err != nil {
+		t.Error(err)
+	}
 
 	lines, err := logWatcher.getNewLines()
 	if err != nil {

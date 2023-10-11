@@ -16,25 +16,27 @@ type FilterConfig struct {
 	Notifications []string `yaml:"notifications"`
 }
 
-type LogFileConfig struct {
-	Path           string         `yaml:"path"`
-	DateFormat     string         `yaml:"dateFormat"`
-	ReadBufferSize string         `yaml:"readBufferSize"`
-	IntervalSec    uint           `yaml:"interval"`
-	Filters        []FilterConfig `yaml:"filters"`
+type FileConfig struct {
+	Name           string   `yaml:"name"`
+	Path           string   `yaml:"path"`
+	DateFormat     string   `yaml:"dateFormat"`
+	ReadBufferSize string   `yaml:"readBufferSize"`
+	IntervalSec    uint     `yaml:"interval"`
+	Filters        []string `yaml:"filters"`
 }
 
 type NotificationConfig struct {
 	Name           string `yaml:"name"`
 	Type           string `yaml:"type"`
-	EmailConfig    `yaml:",inline"`
+	MailConfig     `yaml:",inline"`
 	TelegramConfig `yaml:",inline"`
 }
 
 type Config struct {
 	Hostname      string               `yaml:"hostname"`
 	Notifications []NotificationConfig `yaml:"notifications"`
-	LogFiles      []LogFileConfig      `yaml:"logFiles"`
+	Filters       []FilterConfig       `yaml:"filters"`
+	Files         []FileConfig         `yaml:"files"`
 }
 
 func NewConfig(configPath string) (Config, error) {

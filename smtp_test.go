@@ -15,7 +15,7 @@ func TestSmtp(t *testing.T) {
 		t.Error(err)
 	}
 
-	cfg := globalCfg.Notifications[0].EmailConfig
+	cfg := globalCfg.Notifications[0]
 
 	smtpNotifier, err := NewSmtpNotifier(cfg)
 	if err != nil {

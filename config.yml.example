@@ -16,41 +16,38 @@ notifications:
     token:
     chatID:
 
-logFiles:
+filters:
+  -
+    name: Error
+    pattern: ERROR
+    exceptions:
+      -
+        ExcludeMe
+    message: "🔴 %hostname: %filename (%count)\n%text"
+    subject: "🔴 %hostname: %filename"
+    notifications: [mail_kubetech, tg]
   - 
+    name: Warning
+    pattern: WARN
+    message: "🟡 %hostname: %filename (%count)\n%text"
+    notifications: [tg]
+  - 
+    name: Info
+    pattern: INFO
+    message: "🔵 %hostname: %filename (%count)\n%text"
+    notifications: [tg]
+
+files:
+  - 
+    name: test
     path: /tmp/test
     dateFormat:
     readBufferSize: 1Kb
     interval: 60
-    filters:
-      - 
-        name: App error
-        pattern: ERROR
-        exceptions:
-          -
-            ExceptMe
-        message: "🔴 %hostname: %name (%count)\n\n%text"
-        subject: "🔴 %hostname: %name"
-        notifications: [mail1, tg]
-      - 
-        name: App warning
-        pattern: WARN
-        message: "🟡 %hostname: %name (%count)\n\n%text"
-        notifications: [tg]
-      - 
-        name: App info
-        pattern: INFO
-        message: "🔵 %hostname: %name (%count)\n\n%text"
-        notifications: [tg]
+    filters: [Error, Warning, Info]
   - 
     path: /tmp/test2
     dateFormat:
     readBufferSize: 1Kb
     interval: 60
-    filters:
-      - 
-        name: App error2
-        pattern: ERROR
-        message: "🔴 %hostname: %name (%count)\n\n%text"
-        subject: "🔴 %hostname: %name"
-        notifications: [mail1, tg]
+    filters: [Error]
