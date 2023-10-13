@@ -59,10 +59,15 @@ func NewWatcher(cfg FileConfig, filters []*Filter) (*Watcher, error) {
 	}
 
 	for _, filterName := range cfg.Filters {
+		found := false
 		for _, filter := range filters {
 			if filter.Name == filterName {
 				w.filters = append(w.filters, filter)
+				found = true
 			}
+		}
+		if !found {
+			return nil, fmt.Errorf("Unknown filter: %s", filterName)
 		}
 	}
 
