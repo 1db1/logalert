@@ -2,30 +2,30 @@ hostname: MyHost
 
 notifications:
   -
-    name: mail1
+    name: mail
     type: mail
-    host:
-    port: 
-    username:
-    password:
-    from:
-    to:
+    host: smtp.server.com
+    port: 25
+    username: <username>
+    password: <password>
+    from: from@mail.com
+    to: to@mail.com
   -
     name: tg
     type: telegram
-    token:
-    chatID:
+    token: "YOUR_BOT_TOKEN_FROM_BOTFATHER"
+    chatID: "CHATID_FOUNDED_WITH_@getmyid_bot"
 
 filters:
   -
     name: Error
     pattern: ERROR
-    exceptions:
-      -
-        ExcludeMe
+    exceptions: [
+        "ExcludeMe"
+    ]
     message: "🔴 %hostname: %filename (%count)\n%text"
     subject: "🔴 %hostname: %filename"
-    notifications: [mail_kubetech, tg]
+    notifications: [mail, tg]
   - 
     name: Warning
     pattern: WARN
