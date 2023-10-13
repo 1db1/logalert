@@ -15,10 +15,13 @@ type Message struct {
 
 func (msg *Message) BuildSubject() {
 	msg.Subject = strings.Replace(msg.Filter.SubjectFormat, "%filename", msg.FileName, -1)
+	msg.Subject = strings.Replace(msg.Subject, "%filtername", msg.Filter.Name, -1)
+	msg.Subject = strings.Replace(msg.Subject, "%count", strconv.Itoa(msg.Count), -1)
 }
 
 func (msg *Message) BuildText() {
-	text := strings.Replace(msg.Filter.TextFormat, "%filename", msg.FileName, -1)
-	text = strings.Replace(text, "%count", strconv.Itoa(msg.Count), -1)
-	msg.Text = strings.Replace(text, "%text", msg.Text, -1)
+	msg.Text = strings.Replace(msg.Filter.TextFormat, "%filename", msg.FileName, -1)
+	msg.Text = strings.Replace(msg.Text, "%filtername", msg.Filter.Name, -1)
+	msg.Text = strings.Replace(msg.Text, "%count", strconv.Itoa(msg.Count), -1)
+	msg.Text = strings.Replace(msg.Text, "%text", msg.Text, -1)
 }

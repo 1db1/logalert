@@ -18,13 +18,29 @@ notifications:
 
 filters:
   -
+    # Filter name
     name: Error
+
+    # Regexp pattern. Syntax: https://github.com/google/re2/wiki/Syntax
     pattern: ERROR
+
+    # Pattern exceptions
     exceptions: [
         "ExcludeMe"
     ]
+
+    # Notification message text and subject (for mail notifications).
+    # Special words: 
+    #   %hostname
+    #   %filename
+    #   %filtername
+    #   %text
+    #   %count - number of identical messages (excluding timestamp) per period
     message: "🔴 %hostname: %filename (%count)\n%text"
     subject: "🔴 %hostname: %filename"
+
+
+    # List of notifications for this filter
     notifications: [mail, tg]
   - 
     name: Warning
@@ -39,11 +55,25 @@ filters:
 
 files:
   - 
+    # Log file name
     name: test
+
+    # Log file path
     path: /tmp/test
-    dateFormat:
-    readBufferSize: 1Kb
+
+    # dateFormat - regexp for log dates matching.
+    # E.g. "2023-10-12 10:15:25" - "\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}\\s"
+    dateFormat: 
+
+    # Static memory buffer for file processing
+    # available values: 1 Kb - 10 Mb
+    # e.g. "10Kb", "1mb", "50KB"...
+    readBufferSize: 100Kb
+
+    # File checking interval in seconds
     interval: 60
+
+    # List of filters for searching in the log file
     filters: [Error, Warning, Info]
   - 
     path: /tmp/test2

@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const bufferSizeLimit = 10_000_000
+const bufferSizeLimit = 10_485_760
 
 // newBuffer allocates and returns new bytes buffer
 // available values: 1 Kb - bufferSizeLimit
